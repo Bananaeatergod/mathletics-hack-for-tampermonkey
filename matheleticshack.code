@@ -1,0 +1,69 @@
+// ==UserScript==
+// @name         Mathletics autoanswer
+// @namespace    https://tampermonkey.com
+// @version      1.03
+// @description  Mathletics Live Cheats that actually give points! Hold 'A' to generate points, Press 'A' to type in the answer, or if your answer is already typed press 'A' to submit
+// @author       Bananaeatergod
+// @match        *://live.mathletics.com/*
+// @grant        none
+// @license MIT
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    function typeAnswer(answer) {
+        var inputElement = document.querySelector(".questions-input-adjustment.questions-input-width-v3");
+        var currentIndex = 0;
+
+        function typeCharacter() {
+            if (currentIndex < answer.length) {
+                var char = answer.charAt(currentIndex);
+                inputElement.value += char;
+                currentIndex++;
+                typeCharacter();
+            } else {
+                var formElement = document.querySelector('.question-input-form');
+                var submitEvent = new Event('submit', {
+                    bubbles: true,
+                    cancelable: true
+                });
+                formElement.dispatchEvent(submitEvent);
+                setTimeout(performAction, 500);
+            }
+        }
+
+        typeCharacter();
+    }
+
+    function ShowAnswer() {
+        var questionText = document.querySelector('.questions-text-alignment.whiteTextWithShadow.question-size-v4').textContent;
+        var equation = questionText.split('=')[0];
+
+        function calculateAnswer(equation) {
+            // Replace "×" with "*" and "÷" with "/" for evaluation
+            equation = equation.replace("×", "*").replace("÷", "/");
+            // Check for "Half of" and calculate accordingly
+            if (equation.includes("Half of")) {
+                // Extract the number after "Half of" (with potential space)
+                var numberPart = equation.split("Half of")[1].trim();
+                var number = parseFloat(numberPart);
+                return number / 2;
+            } else {
+                return eval(equation);
+            }
+        }
+
+        var answer = calculateAnswer(equation);
+
+        typeAnswer(answer.toString());
+    }
+
+    window.addEventListener("keydown", checkKeyPressed, false);
+
+    function checkKeyPressed(e) {
+        if (e.keyCode == 65) { // 'A' key
+            ShowAnswer();
+        }
+    }
+})();
