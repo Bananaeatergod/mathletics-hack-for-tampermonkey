@@ -1,17 +1,16 @@
 // ==UserScript==
 // @name         Mathletics autoanswer
 // @namespace    https://tampermonkey.com
-// @version      1.03
+// @version      1.04
 // @description  Mathletics Live Cheats that actually give points! Hold 'A' to generate points, Press 'A' to type in the answer, or if your answer is already typed press 'A' to submit
 // @author       Bananaeatergod
 // @match        *://live.mathletics.com/*
 // @grant        none
-// @license MIT
+// @license      MIT
 // ==/UserScript==
 
 (function() {
     'use strict';
-
     function typeAnswer(answer) {
         var inputElement = document.querySelector(".questions-input-adjustment.questions-input-width-v3");
         var currentIndex = 0;
@@ -38,14 +37,33 @@
 
     function ShowAnswer() {
         var questionText = document.querySelector('.questions-text-alignment.whiteTextWithShadow.question-size-v4').textContent;
-        var equation = questionText.split('=')[0];
+        var equation = questionText.split('=')[0].trim();
 
         function calculateAnswer(equation) {
-            // Replace "×" with "*" and "÷" with "/" for evaluation
             equation = equation.replace("×", "*").replace("÷", "/");
-            // Check for "Half of" and calculate accordingly
-            if (equation.includes("Half of")) {
-                // Extract the number after "Half of" (with potential space)
+            var rightSide = parseFloat(questionText.split('=')[1].trim());
+
+            if (equation.includes('*')) {
+                // Handle multiplication with a missing factor (e.g., "4x = 8")
+                var parts = equation.split('*').map(part => part.trim());
+                if (parts[0] === '?' || parts[1] === '?') {
+                    var knownFactor = parts[0] === '?' ? parseFloat(parts[1]) : parseFloat(parts[0]);
+                    return rightSide / knownFactor;
+                }
+            }
+
+            // Handle equations missing an operand
+            if (equation.endsWith('+') || equation.endsWith('-') || equation.endsWith('*') || equation.endsWith('/')) {
+                var leftSide = equation.slice(0, -1).trim();
+                var operator = equation.slice(-1);
+
+                switch (operator) {
+                    case '+': return rightSide - (leftSide ? parseFloat(leftSide) : 0);
+                    case '-': return (leftSide ? parseFloat(leftSide) : 0) - rightSide;
+                    case '*': return rightSide / (leftSide ? parseFloat(leftSide) : 1);
+                    case '/': return (leftSide ? parseFloat(leftSide) : 1) * rightSide;
+                }
+            } else if (equation.includes("Half of")) {
                 var numberPart = equation.split("Half of")[1].trim();
                 var number = parseFloat(numberPart);
                 return number / 2;
@@ -55,14 +73,13 @@
         }
 
         var answer = calculateAnswer(equation);
-
         typeAnswer(answer.toString());
     }
 
     window.addEventListener("keydown", checkKeyPressed, false);
 
     function checkKeyPressed(e) {
-        if (e.keyCode == 65) { // 'A' key
+        if (e.key === 'a' || e.key === 'A') {
             ShowAnswer();
         }
     }
